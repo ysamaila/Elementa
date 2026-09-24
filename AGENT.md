@@ -65,25 +65,38 @@ The dataset consists of all 118 chemical elements from Atomic Number 1 (Hydrogen
   - Implemented `ElementDetailDialog` showing element overview, symbol badge, atomic mass, period, group, and descriptive summary.
   - Implemented horizontal scrollable category legend chip bar with 10 chemical category indicators.
   - Added comprehensive test suites: 11 tests verifying 118-element integrity, zero duplicate symbols/numbers, coordinate bounds, f-block placement, repository methods, and widget smoke tests (`All tests passed!`, `flutter analyze` 0 issues).
+### Release 2 — Complete (Session 2)
+- Completed:
+  - Applied complete Design System in `lib/theme/app_theme.dart`:
+    - Refined, accessible, harmonious color palette across all 10 IUPAC chemical categories (Alkali Metals, Alkaline Earth, Transition Metals, Post-Transition, Metalloids, Reactive Nonmetals, Noble Gases, Lanthanides, Actinides, Unknown/Synthetic).
+    - Consistent spacing scale (`AppSpacing.xs` = 4, `AppSpacing.sm` = 8, `AppSpacing.md` = 16, `AppSpacing.lg` = 24, `AppSpacing.xl` = 32, `AppSpacing.xxl` = 48) applied systematically across screens, dialogs, and tiles.
+    - Curated Google Fonts typography pairing: `GoogleFonts.outfit` for display headers and chemical symbols, `GoogleFonts.inter` for UI text and summaries, `GoogleFonts.jetBrainsMono` for atomic numbers and metrics.
+  - Implemented persistent, tappable Category Legend bar in `lib/screens/periodic_table_screen.dart`:
+    - Shows category color dot, category display name, and element count badge (e.g. `(6)`).
+    - Tapping opens the newly built `CategoryDetailSheet` (`lib/widgets/category_detail_sheet.dart`) providing detailed IUPAC chemical classification descriptions, complete chips of all elements in that family, and interactive grid highlighting toggle.
+    - Active category filter banner with "Clear" action button and auto-dimming of non-matching element tiles on the grid (`opacity: 0.28`).
+  - Polished `ElementDetailDialog` (`lib/widgets/element_detail_dialog.dart`):
+    - Transforms into a smooth modal bottom sheet on mobile devices and a centered card on tablets.
+    - Category glowing gradient banner, 68x68 large symbol badge with atomic number in mono font and symbol in 26pt bold Outfit font.
+    - Tappable category pill chip with chevron allowing direct jump to category details.
+    - 2x2 key properties cards with icons (Atomic Number, Atomic Mass in unified units `u`, Period, Group/block).
+    - Elevated overview card with clean typography and chemical summary.
+  - Enhanced `ElementBox` and `SeriesPlaceholderBox` (`lib/widgets/element_box.dart`):
+    - Category gradient fill, rounded borders (8px), dynamic `isDimmed` and `isSelected` states with glow shadows.
+    - Series placeholders (Lanthanides 57–71, Actinides 89–103) are now interactive, tapping them opens the corresponding series sheet directly.
+  - Expanded automated test coverage:
+    - Added `test/theme_test.dart` verifying spacing constants, non-collision of 10 category colors, category metadata, and `darkTheme` configuration.
+    - Expanded `test/widget_test.dart` verifying legend taps, CategoryDetailSheet display, grid highlighting, clear filter action, element detail bottom sheet display, close actions, and multi-device viewport tests (360x640 mobile and 800x1280 tablet).
+    - All 19 tests pass cleanly (`flutter test` exit code 0, `flutter analyze` 0 issues).
 - Deferred:
-  - Release 2: Visual styling elevation, Google Fonts (e.g. Orbitron / Inter / Roboto Mono), element box visual hierarchy, element count badges.
   - Release 3: Search bar (symbol, name, atomic number), category filter chips, tap-to-focus on table.
   - Release 4: Full-page element detail view with rich data tabs (physical states, melting/boiling points, electron configurations, electronegativity).
   - Release 5: Fluid animations with `flutter_animate`, hero transitions, pulse effects.
   - Release 6: Store-ready build, accessibility semantic labels, icon/splash, Play Store preparation.
 - Decisions:
-  - Grid Coordinates: 10 rows x 18 columns canvas layout. Main table on rows 1-7; visual spacer on row 8; Lanthanides (57-71) on row 9, columns 3-17; Actinides (89-103) on row 10, columns 3-17.
-  - Category Color Palette: 10 distinct hex colors spanning red, orange, blue, cyan, emerald, lime, purple, pink, rose, and slate.
-  - Viewport Scaling: Default view centered with min scale 0.25x and max scale 3.5x for crisp readability on mobile screens.
-- Keystore & Splash Setup:
-  - Generated release keystore at `android/app/upload-keystore.jks` with default credentials (`storePassword=android`, `keyPassword=android`, `keyAlias=upload`).
-  - Configured `android/key.properties` and wired `signingConfigs.release` in `android/app/build.gradle.kts`.
-  - Excluded `key.properties` and keystores in `.gitignore`.
-  - Generated 512x512 app icon at `assets/icon/app_icon_512.png` and standard Android launcher mipmap densities (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`).
-  - Implemented custom splash screen in `drawable/launch_background.xml` and `drawable-v21/launch_background.xml` featuring centered `launch_image.png` with deep slate background (`#0F172A`).
-  - Verified with successful `flutter build apk --release` (built `app-release.apk` cleanly).
-- App state: Stable and fully usable Release 1 with release signing & splash screen.
+  - Detail View Modal: Native responsive bottom sheet on mobile (<=600px width) with drag handle and 24px top radius; centered modal card on tablet (>600px).
+  - Category Highlighting: Soft dimming (0.28 opacity) for non-matching elements rather than complete hiding, maintaining spatial periodic table layout continuity.
 
 ## Known Issues / TODO
-- None. All automated tests pass, zero analyze warnings, release build succeeds.
+- None. All automated tests pass (19/19), zero analyze warnings, clean build.
 

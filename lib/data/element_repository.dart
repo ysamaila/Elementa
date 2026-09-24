@@ -66,6 +66,16 @@ class ElementRepository {
     return categories.toList();
   }
 
+  /// Sets elements directly from memory (ideal for testing or preloaded caches).
+  void setElements(List<ElementData> elementsList) {
+    final sorted = List<ElementData>.from(elementsList)
+      ..sort((a, b) => a.number.compareTo(b.number));
+    _cachedElements = sorted;
+    _elementsByNumber = {for (final e in sorted) e.number: e};
+    _elementsBySymbol = {for (final e in sorted) e.symbol.toLowerCase(): e};
+    _elementsByGrid = {for (final e in sorted) '${e.row},${e.column}': e};
+  }
+
   /// Resets internal cache (helpful for unit testing).
   void clearCache() {
     _cachedElements = null;

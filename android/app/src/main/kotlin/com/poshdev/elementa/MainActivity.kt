@@ -1,4 +1,4 @@
-package com.example.elementa
+package com.poshdev.elementa
 
 import io.flutter.embedding.android.FlutterActivity
 

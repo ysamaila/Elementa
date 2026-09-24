@@ -1,29 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/element_data.dart';
 import '../data/element_repository.dart';
+import '../theme/app_theme.dart';
 import '../widgets/periodic_table_grid.dart';
 import '../widgets/element_detail_dialog.dart';
+import '../widgets/category_detail_sheet.dart';
 
 /// Main screen displaying the interactive Periodic Table of Elements.
 class PeriodicTableScreen extends StatefulWidget {
-  const PeriodicTableScreen({super.key});
+  final ElementRepository? repository;
+
+  const PeriodicTableScreen({super.key, this.repository});
 
   @override
   State<PeriodicTableScreen> createState() => _PeriodicTableScreenState();
 }
 
 class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
-  final ElementRepository _repository = ElementRepository();
+  late final ElementRepository _repository;
   final TransformationController _transformationController =
       TransformationController();
 
   bool _isLoading = true;
   String? _errorMessage;
+  String? _highlightedCategory;
 
   @override
   void initState() {
     super.initState();
-    _loadElements();
+    _repository = widget.repository ?? ElementRepository();
+    if (_repository.elements.isNotEmpty) {
+      _isLoading = false;
+    } else {
+      _loadElements();
+    }
   }
 
   @override
@@ -71,37 +82,71 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
   }
 
   void _onElementTapped(ElementData element) {
-    ElementDetailDialog.show(context, element);
+    ElementDetailDialog.show(
+      context,
+      element,
+      onCategoryTapped: () => _onCategoryTapped(element.category),
+    );
+  }
+
+  void _onCategoryTapped(String categoryKey) {
+    final categoryInfo = AppTheme.getCategoryInfo(categoryKey);
+    final elementsInCategory = _repository.getByCategory(categoryKey);
+
+    CategoryDetailSheet.show(
+      context: context,
+      categoryInfo: categoryInfo,
+      elements: elementsInCategory,
+      onElementSelected: _onElementTapped,
+      isHighlighted: _highlightedCategory == categoryKey,
+      onHighlightToggle: () {
+        setState(() {
+          if (_highlightedCategory == categoryKey) {
+            _highlightedCategory = null;
+          } else {
+            _highlightedCategory = categoryKey;
+          }
+        });
+        Navigator.of(context).pop();
+      },
+    );
+  }
+
+  void _clearHighlight() {
+    setState(() {
+      _highlightedCategory = null;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Deep navy / slate 900
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 2,
-        titleSpacing: 12.0,
+        backgroundColor: AppTheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        titleSpacing: AppSpacing.md,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(5.0),
+              padding: const EdgeInsets.all(AppSpacing.xs + 2),
               decoration: BoxDecoration(
-                color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8.0),
+                color: AppTheme.transitionMetalColor.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(10.0),
                 border: Border.all(
-                  color: const Color(0xFF3B82F6).withValues(alpha: 0.5),
+                  color: AppTheme.transitionMetalColor.withValues(alpha: 0.5),
                 ),
               ),
               child: const Icon(
                 Icons.science,
-                color: Color(0xFF60A5FA),
-                size: 18,
+                color: AppTheme.transitionMetalColor,
+                size: 20,
               ),
             ),
-            const SizedBox(width: 8),
-            const Flexible(
+            const SizedBox(width: AppSpacing.sm + 2),
+            Flexible(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -110,20 +155,20 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
                     'Elementa',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.4,
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                      letterSpacing: 0.2,
                     ),
                   ),
                   Text(
-                    'Periodic Table',
+                    'Periodic Table of Elements',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 10.5,
-                      color: Colors.white60,
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                 ],
@@ -136,8 +181,8 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
             visualDensity: VisualDensity.compact,
             iconSize: 20,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-            padding: const EdgeInsets.all(6),
-            icon: const Icon(Icons.zoom_out, color: Colors.white70),
+            padding: const EdgeInsets.all(AppSpacing.xs + 2),
+            icon: const Icon(Icons.zoom_out, color: AppTheme.textSecondary),
             tooltip: 'Zoom Out',
             onPressed: _zoomOut,
           ),
@@ -145,8 +190,8 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
             visualDensity: VisualDensity.compact,
             iconSize: 20,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-            padding: const EdgeInsets.all(6),
-            icon: const Icon(Icons.zoom_in, color: Colors.white70),
+            padding: const EdgeInsets.all(AppSpacing.xs + 2),
+            icon: const Icon(Icons.zoom_in, color: AppTheme.textSecondary),
             tooltip: 'Zoom In',
             onPressed: _zoomIn,
           ),
@@ -154,8 +199,8 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
             visualDensity: VisualDensity.compact,
             iconSize: 20,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-            padding: const EdgeInsets.all(6),
-            icon: const Icon(Icons.fit_screen, color: Colors.white70),
+            padding: const EdgeInsets.all(AppSpacing.xs + 2),
+            icon: const Icon(Icons.fit_screen, color: AppTheme.textSecondary),
             tooltip: 'Reset View',
             onPressed: _resetZoom,
           ),
@@ -163,12 +208,12 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
             visualDensity: VisualDensity.compact,
             iconSize: 20,
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-            padding: const EdgeInsets.all(6),
-            icon: const Icon(Icons.info_outline, color: Colors.white70),
+            padding: const EdgeInsets.all(AppSpacing.xs + 2),
+            icon: const Icon(Icons.info_outline, color: AppTheme.textSecondary),
             tooltip: 'App Info',
             onPressed: _showInfoDialog,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
         ],
       ),
       body: _buildBody(),
@@ -179,7 +224,7 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
-          color: Color(0xFF3B82F6),
+          color: AppTheme.transitionMetalColor,
         ),
       );
     }
@@ -187,18 +232,18 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
     if (_errorMessage != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 _errorMessage!,
-                style: const TextStyle(color: Colors.white),
+                style: GoogleFonts.inter(color: Colors.white),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               ElevatedButton(
                 onPressed: () {
                   setState(() {
@@ -217,8 +262,11 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
 
     return Column(
       children: [
-        // Category legend bar
+        // Persistent, tappable category legend bar
         _buildCategoryLegendBar(),
+
+        // Active category filter banner (if highlighted)
+        if (_highlightedCategory != null) _buildActiveFilterBanner(),
 
         // Main table canvas with pan/zoom
         Expanded(
@@ -227,29 +275,31 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
               PeriodicTableGrid(
                 repository: _repository,
                 onElementSelected: _onElementTapped,
+                onCategorySelected: _onCategoryTapped,
                 transformationController: _transformationController,
+                highlightedCategory: _highlightedCategory,
               ),
 
               // Navigation hint pill at bottom
               Positioned(
-                bottom: 16,
-                left: 16,
-                right: 16,
+                bottom: AppSpacing.md,
+                left: AppSpacing.md,
+                right: AppSpacing.md,
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14.0,
-                      vertical: 8.0,
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B).withValues(alpha: 0.92),
+                      color: AppTheme.surfaceCard.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(20.0),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.12),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
+                          color: Colors.black.withValues(alpha: 0.35),
                           blurRadius: 8.0,
                         ),
                       ],
@@ -260,16 +310,16 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
                         Icon(
                           Icons.pinch,
                           size: 16,
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: Colors.white.withValues(alpha: 0.75),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         Flexible(
                           child: Text(
-                            'Pinch to zoom • Pan to move • Tap for details',
+                            'Pinch to zoom • Pan to explore • Tap for details',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
+                            style: GoogleFonts.inter(
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 11.5,
                               fontWeight: FontWeight.w500,
                             ),
@@ -287,69 +337,166 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
     );
   }
 
+  /// Persistent, tappable legend allowing users to identify and inspect categories
   Widget _buildCategoryLegendBar() {
-    const categories = [
-      {'name': 'Alkali Metal', 'color': Color(0xFFEF4444)},
-      {'name': 'Alkaline Earth', 'color': Color(0xFFF97316)},
-      {'name': 'Transition Metal', 'color': Color(0xFF3B82F6)},
-      {'name': 'Post-Transition', 'color': Color(0xFF06B6D4)},
-      {'name': 'Metalloid', 'color': Color(0xFF10B981)},
-      {'name': 'Reactive Nonmetal', 'color': Color(0xFF84CC16)},
-      {'name': 'Noble Gas', 'color': Color(0xFFA855F7)},
-      {'name': 'Lanthanide', 'color': Color(0xFFEC4899)},
-      {'name': 'Actinide', 'color': Color(0xFFF43F5E)},
-      {'name': 'Unknown', 'color': Color(0xFF64748B)},
-    ];
+    final categories = AppTheme.categories.values.toList();
 
     return Container(
-      height: 42,
+      height: 48,
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B).withValues(alpha: 0.6),
-        border: Border(
+        color: AppTheme.surface.withValues(alpha: 0.85),
+        border: const Border(
           bottom: BorderSide(
-            color: Colors.white.withValues(alpha: 0.06),
+            color: AppTheme.borderLight,
           ),
         ),
       ),
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 14),
+        separatorBuilder: (context, index) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
           final cat = categories[index];
-          final color = cat['color'] as Color;
-          final name = cat['name'] as String;
+          final isSelected = _highlightedCategory == cat.id;
+          final count = _repository.getByCategory(cat.id).length;
 
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 10,
-                height: 10,
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _onCategoryTapped(cat.id),
+              borderRadius: BorderRadius.circular(16.0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm + 2,
+                  vertical: AppSpacing.xs,
+                ),
                 decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.5),
-                      blurRadius: 4,
+                  color: isSelected
+                      ? cat.color.withValues(alpha: 0.28)
+                      : cat.color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(16.0),
+                  border: Border.all(
+                    color: isSelected
+                        ? cat.color
+                        : cat.color.withValues(alpha: 0.35),
+                    width: isSelected ? 1.5 : 1.0,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: cat.color,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: cat.color.withValues(alpha: 0.6),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: AppSpacing.xs + 2),
+                    Text(
+                      cat.displayName,
+                      style: GoogleFonts.inter(
+                        color: isSelected
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.85),
+                        fontSize: 11.5,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                    if (count > 0) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '($count)',
+                        style: GoogleFonts.jetBrainsMono(
+                          color: isSelected
+                              ? cat.color
+                              : Colors.white.withValues(alpha: 0.45),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                name,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+            ),
           );
         },
+      ),
+    );
+  }
+
+  /// Banner displayed when a category filter / highlight is active
+  Widget _buildActiveFilterBanner() {
+    final catInfo = AppTheme.getCategoryInfo(_highlightedCategory!);
+    final count = _repository.getByCategory(_highlightedCategory!).length;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs + 2,
+      ),
+      color: catInfo.color.withValues(alpha: 0.16),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: catInfo.color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Showing ${catInfo.displayName} ($count elements) • Tap legend or button to reset',
+              style: GoogleFonts.inter(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: _clearHighlight,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 2,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.close, size: 14, color: Colors.white70),
+                  const SizedBox(width: 2),
+                  Text(
+                    'Clear',
+                    style: GoogleFonts.inter(
+                      color: Colors.white70,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -358,41 +505,71 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: AppTheme.surfaceCard,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppTheme.borderLight),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.science, color: Color(0xFF60A5FA)),
-            SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.xs + 2),
+              decoration: BoxDecoration(
+                color: AppTheme.transitionMetalColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.science,
+                color: AppTheme.transitionMetalColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm + 2),
             Text(
               'About Elementa',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Elementa is an offline interactive periodic table reference app covering all 118 verified elements.',
-              style: TextStyle(color: Colors.white70, fontSize: 13.5, height: 1.4),
+              'Elementa is an offline interactive periodic table reference application covering all 118 chemical elements from Hydrogen to Oganesson.',
+              style: GoogleFonts.inter(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 13.5,
+                height: 1.45,
+              ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
-              '• Drag with your finger to pan across groups and periods.\n'
-              '• Pinch in/out or use the zoom buttons in the app bar to adjust scaling.\n'
-              '• Tap any element to inspect its atomic number, mass, group, period, category, and overview.',
-              style: TextStyle(color: Colors.white60, fontSize: 12.5, height: 1.5),
+              '• Interactive Legend: Tap any category chip in the top bar to inspect its scientific definition and highlight elements on the grid.\n'
+              '• Zoom & Pan: Drag to pan across groups 1–18; pinch or use the zoom buttons to inspect any element.\n'
+              '• Element Details: Tap any element tile to open its complete detail card with atomic weight, group, period, and summary.',
+              style: GoogleFonts.inter(
+                color: Colors.white.withValues(alpha: 0.65),
+                fontSize: 12.5,
+                height: 1.55,
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Got it'),
+            child: Text(
+              'Got it',
+              style: GoogleFonts.inter(
+                color: AppTheme.transitionMetalColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

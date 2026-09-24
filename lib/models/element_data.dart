@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 /// Represents a single chemical element on the periodic table.
 class ElementData {
@@ -65,58 +66,10 @@ class ElementData {
   }
 
   /// Returns a human-friendly category label.
-  String get categoryDisplayName {
-    switch (category) {
-      case 'alkali-metal':
-        return 'Alkali Metal';
-      case 'alkaline-earth':
-        return 'Alkaline Earth Metal';
-      case 'transition-metal':
-        return 'Transition Metal';
-      case 'post-transition-metal':
-        return 'Post-Transition Metal';
-      case 'metalloid':
-        return 'Metalloid';
-      case 'reactive-nonmetal':
-        return 'Reactive Nonmetal';
-      case 'noble-gas':
-        return 'Noble Gas';
-      case 'lanthanide':
-        return 'Lanthanide';
-      case 'actinide':
-        return 'Actinide';
-      case 'unknown':
-      default:
-        return 'Unknown';
-    }
-  }
+  String get categoryDisplayName => AppTheme.getCategoryDisplayName(category);
 
   /// Distinct, accessible color for each chemical category.
-  Color get categoryColor {
-    switch (category) {
-      case 'alkali-metal':
-        return const Color(0xFFEF4444); // Crimson red
-      case 'alkaline-earth':
-        return const Color(0xFFF97316); // Bright orange
-      case 'transition-metal':
-        return const Color(0xFF3B82F6); // Vibrant blue
-      case 'post-transition-metal':
-        return const Color(0xFF06B6D4); // Cyan
-      case 'metalloid':
-        return const Color(0xFF10B981); // Emerald green
-      case 'reactive-nonmetal':
-        return const Color(0xFF84CC16); // Lime green
-      case 'noble-gas':
-        return const Color(0xFFA855F7); // Purple
-      case 'lanthanide':
-        return const Color(0xFFEC4899); // Pink
-      case 'actinide':
-        return const Color(0xFFF43F5E); // Rose
-      case 'unknown':
-      default:
-        return const Color(0xFF64748B); // Slate
-    }
-  }
+  Color get categoryColor => AppTheme.getCategoryColor(category);
 
   /// Formatted atomic mass string (rounded to 3 decimal places or integer if integer).
   String get formattedAtomicMass {

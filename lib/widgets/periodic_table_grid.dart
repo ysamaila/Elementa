@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/element_data.dart';
 import '../data/element_repository.dart';
+import '../theme/app_theme.dart';
 import 'element_box.dart';
 
 /// Renders the complete periodic table layout (18 columns x 7 main rows + 2 detached rows).
 class PeriodicTableGrid extends StatelessWidget {
   final ElementRepository repository;
   final ValueChanged<ElementData> onElementSelected;
+  final ValueChanged<String>? onCategorySelected;
   final TransformationController? transformationController;
+  final String? highlightedCategory;
 
   static const double cellWidth = 58.0;
   static const double cellHeight = 62.0;
@@ -18,7 +22,9 @@ class PeriodicTableGrid extends StatelessWidget {
     super.key,
     required this.repository,
     required this.onElementSelected,
+    this.onCategorySelected,
     this.transformationController,
+    this.highlightedCategory,
   });
 
   @override
@@ -30,7 +36,7 @@ class PeriodicTableGrid extends StatelessWidget {
       boundaryMargin: const EdgeInsets.all(100.0),
       constrained: false,
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -45,13 +51,14 @@ class PeriodicTableGrid extends StatelessWidget {
             ],
 
             // Separator gap between main table and f-block
-            const SizedBox(height: 18.0),
+            const SizedBox(height: AppSpacing.md + 2),
 
             // Row 9: Lanthanides series (57 to 71)
             _buildFBlockRow(
               rowIndex: 9,
               seriesTitle: 'Lanthanides',
-              color: const Color(0xFFEC4899),
+              categoryKey: 'lanthanide',
+              color: AppTheme.lanthanideColor,
             ),
             const SizedBox(height: cellSpacing),
 
@@ -59,7 +66,8 @@ class PeriodicTableGrid extends StatelessWidget {
             _buildFBlockRow(
               rowIndex: 10,
               seriesTitle: 'Actinides',
-              color: const Color(0xFFF43F5E),
+              categoryKey: 'actinide',
+              color: AppTheme.actinideColor,
             ),
           ],
         ),
@@ -81,10 +89,10 @@ class PeriodicTableGrid extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               '$c',
-              style: TextStyle(
+              style: GoogleFonts.jetBrainsMono(
                 color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -105,10 +113,10 @@ class PeriodicTableGrid extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(
             '$row',
-            style: TextStyle(
+            style: GoogleFonts.jetBrainsMono(
               color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -127,26 +135,38 @@ class PeriodicTableGrid extends StatelessWidget {
   Widget _buildCell(int row, int col) {
     // Check for Lanthanides placeholder (Period 6, Group 3)
     if (row == 6 && col == 3) {
-      return const SizedBox(
+      final isDimmed = highlightedCategory != null && highlightedCategory != 'lanthanide';
+      return SizedBox(
         width: cellWidth,
         height: cellHeight,
-        child: SeriesPlaceholderBox(
-          range: '57–71',
-          title: 'La–Lu',
-          color: Color(0xFFEC4899),
+        child: AnimatedOpacity(
+          opacity: isDimmed ? 0.28 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: SeriesPlaceholderBox(
+            range: '57–71',
+            title: 'La–Lu',
+            color: AppTheme.lanthanideColor,
+            onTap: () => onCategorySelected?.call('lanthanide'),
+          ),
         ),
       );
     }
 
     // Check for Actinides placeholder (Period 7, Group 3)
     if (row == 7 && col == 3) {
-      return const SizedBox(
+      final isDimmed = highlightedCategory != null && highlightedCategory != 'actinide';
+      return SizedBox(
         width: cellWidth,
         height: cellHeight,
-        child: SeriesPlaceholderBox(
-          range: '89–103',
-          title: 'Ac–Lr',
-          color: Color(0xFFF43F5E),
+        child: AnimatedOpacity(
+          opacity: isDimmed ? 0.28 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: SeriesPlaceholderBox(
+            range: '89–103',
+            title: 'Ac–Lr',
+            color: AppTheme.actinideColor,
+            onTap: () => onCategorySelected?.call('actinide'),
+          ),
         ),
       );
     }
@@ -154,11 +174,16 @@ class PeriodicTableGrid extends StatelessWidget {
     // Lookup element by row and column
     final element = repository.getByGrid(row, col);
     if (element != null) {
+      final isHighlighted = highlightedCategory == null || element.category == highlightedCategory;
+      final isSelected = highlightedCategory != null && element.category == highlightedCategory;
+
       return SizedBox(
         width: cellWidth,
         height: cellHeight,
         child: ElementBox(
           element: element,
+          isDimmed: !isHighlighted,
+          isSelected: isSelected,
           onTap: () => onElementSelected(element),
         ),
       );
@@ -175,6 +200,7 @@ class PeriodicTableGrid extends StatelessWidget {
   Widget _buildFBlockRow({
     required int rowIndex,
     required String seriesTitle,
+    required String categoryKey,
     required Color color,
   }) {
     return Row(
@@ -199,11 +225,16 @@ class PeriodicTableGrid extends StatelessWidget {
   Widget _buildFBlockCell(int row, int col) {
     final element = repository.getByGrid(row, col);
     if (element != null) {
+      final isHighlighted = highlightedCategory == null || element.category == highlightedCategory;
+      final isSelected = highlightedCategory != null && element.category == highlightedCategory;
+
       return SizedBox(
         width: cellWidth,
         height: cellHeight,
         child: ElementBox(
           element: element,
+          isDimmed: !isHighlighted,
+          isSelected: isSelected,
           onTap: () => onElementSelected(element),
         ),
       );
