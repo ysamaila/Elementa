@@ -143,5 +143,78 @@ void main() {
       expect(iron.number, equals(26));
       expect(iron.name, equals('Iron'));
     });
+
+    test('All elements have electron configurations and valid states of matter', () {
+      final file = File('assets/data/elements.json');
+      final jsonList = json.decode(file.readAsStringSync()) as List<dynamic>;
+      final parsed = jsonList
+          .map((i) => ElementData.fromJson(i as Map<String, dynamic>))
+          .toList();
+
+      for (final e in parsed) {
+        expect(e.electronConfiguration.isNotEmpty, isTrue,
+            reason: 'Element ${e.symbol} missing electron configuration');
+        expect(['Solid', 'Liquid', 'Gas', 'Unknown'].contains(e.state), isTrue,
+            reason: 'Element ${e.symbol} has invalid state: ${e.state}');
+      }
+    });
+
+    test('Search functionality finds elements by symbol, name, and atomic number', () {
+      final file = File('assets/data/elements.json');
+      final jsonList = json.decode(file.readAsStringSync()) as List<dynamic>;
+      final parsed = jsonList
+          .map((i) => ElementData.fromJson(i as Map<String, dynamic>))
+          .toList();
+
+      final repo = ElementRepository();
+      repo.setElements(parsed);
+
+      // Search by exact symbol
+      final goldBySymbol = repo.search('Au');
+      expect(goldBySymbol.isNotEmpty, isTrue);
+      expect(goldBySymbol.first.name, equals('Gold'));
+
+      // Search by name
+      final goldByName = repo.search('gold');
+      expect(goldByName.any((e) => e.symbol == 'Au'), isTrue);
+
+      // Search by number
+      final goldByNum = repo.search('79');
+      expect(goldByNum.isNotEmpty, isTrue);
+      expect(goldByNum.first.symbol, equals('Au'));
+
+      // Search non-existent
+      final emptyResults = repo.search('xyznotfound');
+      expect(emptyResults.isEmpty, isTrue);
+    });
+
+    test('Sequential navigation steps forward and backward with wrapping', () {
+      final file = File('assets/data/elements.json');
+      final jsonList = json.decode(file.readAsStringSync()) as List<dynamic>;
+      final parsed = jsonList
+          .map((i) => ElementData.fromJson(i as Map<String, dynamic>))
+          .toList();
+
+      final repo = ElementRepository();
+      repo.setElements(parsed);
+
+      // Mid-table navigation
+      final gold = repo.getByNumber(79)!;
+      final prevGold = repo.getPrevious(gold.number)!;
+      final nextGold = repo.getNext(gold.number)!;
+      expect(prevGold.number, equals(78)); // Platinum
+      expect(prevGold.symbol, equals('Pt'));
+      expect(nextGold.number, equals(80)); // Mercury
+      expect(nextGold.symbol, equals('Hg'));
+
+      // Boundary wrapping
+      final hydrogen = repo.getByNumber(1)!;
+      final prevHydrogen = repo.getPrevious(hydrogen.number)!;
+      expect(prevHydrogen.number, equals(118)); // Oganesson
+
+      final oganesson = repo.getByNumber(118)!;
+      final nextOganesson = repo.getNext(oganesson.number)!;
+      expect(nextOganesson.number, equals(1)); // Hydrogen
+    });
   });
 }

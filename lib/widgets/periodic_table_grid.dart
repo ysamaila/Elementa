@@ -12,6 +12,8 @@ class PeriodicTableGrid extends StatelessWidget {
   final ValueChanged<String>? onCategorySelected;
   final TransformationController? transformationController;
   final String? highlightedCategory;
+  final Set<int>? matchingElementNumbers;
+  final int? focusedElementNumber;
 
   static const double cellWidth = 58.0;
   static const double cellHeight = 62.0;
@@ -25,7 +27,28 @@ class PeriodicTableGrid extends StatelessWidget {
     this.onCategorySelected,
     this.transformationController,
     this.highlightedCategory,
+    this.matchingElementNumbers,
+    this.focusedElementNumber,
   });
+
+  /// Computes the center pixel offset of any element given its periodic table row and column.
+  static Offset getElementCenterOffset(int row, int col) {
+    const leftPad = AppSpacing.lg;
+    const topPad = AppSpacing.lg;
+
+    final double x = leftPad + headerSize + cellSpacing + (col - 1) * (cellWidth + cellSpacing) + (cellWidth / 2);
+
+    double y;
+    if (row <= 7) {
+      y = topPad + headerSize + cellSpacing + (row - 1) * (cellHeight + cellSpacing) + (cellHeight / 2);
+    } else if (row == 9) {
+      y = topPad + headerSize + cellSpacing + 7 * (cellHeight + cellSpacing) + (AppSpacing.md + 2) + (cellHeight / 2);
+    } else {
+      y = topPad + headerSize + cellSpacing + 7 * (cellHeight + cellSpacing) + (AppSpacing.md + 2) + (cellHeight + cellSpacing) + (cellHeight / 2);
+    }
+
+    return Offset(x, y);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,16 +197,20 @@ class PeriodicTableGrid extends StatelessWidget {
     // Lookup element by row and column
     final element = repository.getByGrid(row, col);
     if (element != null) {
-      final isHighlighted = highlightedCategory == null || element.category == highlightedCategory;
+      final matchesSearch = matchingElementNumbers == null || matchingElementNumbers!.contains(element.number);
+      final matchesCategory = highlightedCategory == null || element.category == highlightedCategory;
+      final isDimmed = !matchesSearch || !matchesCategory;
       final isSelected = highlightedCategory != null && element.category == highlightedCategory;
+      final isFocused = focusedElementNumber == element.number;
 
       return SizedBox(
         width: cellWidth,
         height: cellHeight,
         child: ElementBox(
           element: element,
-          isDimmed: !isHighlighted,
+          isDimmed: isDimmed,
           isSelected: isSelected,
+          isHighlighted: isFocused,
           onTap: () => onElementSelected(element),
         ),
       );
@@ -225,16 +252,20 @@ class PeriodicTableGrid extends StatelessWidget {
   Widget _buildFBlockCell(int row, int col) {
     final element = repository.getByGrid(row, col);
     if (element != null) {
-      final isHighlighted = highlightedCategory == null || element.category == highlightedCategory;
+      final matchesSearch = matchingElementNumbers == null || matchingElementNumbers!.contains(element.number);
+      final matchesCategory = highlightedCategory == null || element.category == highlightedCategory;
+      final isDimmed = !matchesSearch || !matchesCategory;
       final isSelected = highlightedCategory != null && element.category == highlightedCategory;
+      final isFocused = focusedElementNumber == element.number;
 
       return SizedBox(
         width: cellWidth,
         height: cellHeight,
         child: ElementBox(
           element: element,
-          isDimmed: !isHighlighted,
+          isDimmed: isDimmed,
           isSelected: isSelected,
+          isHighlighted: isFocused,
           onTap: () => onElementSelected(element),
         ),
       );

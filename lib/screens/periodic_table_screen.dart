@@ -7,7 +7,8 @@ import '../widgets/periodic_table_grid.dart';
 import '../widgets/element_detail_dialog.dart';
 import '../widgets/category_detail_sheet.dart';
 
-/// Main screen displaying the interactive Periodic Table of Elements.
+/// Main screen displaying the interactive Periodic Table of Elements
+/// with real-time search, category filtering, element focusing, and pan/zoom controls.
 class PeriodicTableScreen extends StatefulWidget {
   final ElementRepository? repository;
 
@@ -21,10 +22,18 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
   late final ElementRepository _repository;
   final TransformationController _transformationController =
       TransformationController();
+  final TextEditingController _searchController = TextEditingController();
 
   bool _isLoading = true;
   String? _errorMessage;
   String? _highlightedCategory;
+
+  // Search & Focus state (Release 3, 4, 5)
+  bool _isSearchActive = false;
+  String _searchQuery = '';
+  List<ElementData> _searchResults = [];
+  Set<int>? _matchingElementNumbers;
+  int? _focusedElementNumber;
 
   @override
   void initState() {
@@ -40,6 +49,7 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
   @override
   void dispose() {
     _transformationController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -81,11 +91,72 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
     }
   }
 
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query.trim();
+      if (_searchQuery.isEmpty) {
+        _searchResults = [];
+        _matchingElementNumbers = null;
+        _focusedElementNumber = null;
+      } else {
+        _searchResults = _repository.search(_searchQuery);
+        _matchingElementNumbers = _searchResults.map((e) => e.number).toSet();
+        if (_searchResults.isNotEmpty) {
+          _focusedElementNumber = _searchResults.first.number;
+          _focusElement(_searchResults.first);
+        } else {
+          _focusedElementNumber = null;
+        }
+      }
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _searchResults = [];
+      _matchingElementNumbers = null;
+      _focusedElementNumber = null;
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchActive = !_isSearchActive;
+      if (!_isSearchActive) {
+        _clearSearch();
+      }
+    });
+  }
+
+  void _focusElement(ElementData element) {
+    setState(() {
+      _focusedElementNumber = element.number;
+    });
+
+    final centerOffset = PeriodicTableGrid.getElementCenterOffset(element.row, element.column);
+    final currentScale = _transformationController.value.getMaxScaleOnAxis().clamp(0.9, 1.6);
+    final size = MediaQuery.of(context).size;
+    
+    // Calculate translation to position the target cell comfortably in the center
+    final targetX = (size.width / 2) - (centerOffset.dx * currentScale);
+    final targetY = ((size.height - 180) / 2) - (centerOffset.dy * currentScale);
+
+    _transformationController.value = Matrix4.identity()
+      ..scaleByDouble(currentScale, currentScale, 1.0, 1.0)
+      ..setTranslationRaw(targetX, targetY, 0.0);
+  }
+
   void _onElementTapped(ElementData element) {
     ElementDetailDialog.show(
       context,
       element,
+      repository: _repository,
       onCategoryTapped: () => _onCategoryTapped(element.category),
+      onElementChanged: (newElement) {
+        _focusElement(newElement);
+      },
     );
   }
 
@@ -127,56 +198,20 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
         elevation: 0,
         scrolledUnderElevation: 1,
         titleSpacing: AppSpacing.md,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.xs + 2),
-              decoration: BoxDecoration(
-                color: AppTheme.transitionMetalColor.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(
-                  color: AppTheme.transitionMetalColor.withValues(alpha: 0.5),
-                ),
-              ),
-              child: const Icon(
-                Icons.science,
-                color: AppTheme.transitionMetalColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm + 2),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Elementa',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                  Text(
-                    'Periodic Table of Elements',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        title: _isSearchActive ? _buildSearchAppBarField() : _buildAppBarTitle(),
         actions: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            iconSize: 20,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            padding: const EdgeInsets.all(AppSpacing.xs + 2),
+            icon: Icon(
+              _isSearchActive ? Icons.close : Icons.search,
+              color: _isSearchActive ? const Color(0xFF38BDF8) : AppTheme.textSecondary,
+            ),
+            tooltip: _isSearchActive ? 'Close Search' : 'Search Elements',
+            onPressed: _toggleSearch,
+          ),
           IconButton(
             visualDensity: VisualDensity.compact,
             iconSize: 20,
@@ -217,6 +252,80 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
         ],
       ),
       body: _buildBody(),
+    );
+  }
+
+  Widget _buildAppBarTitle() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.xs + 2),
+          decoration: BoxDecoration(
+            color: AppTheme.transitionMetalColor.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(10.0),
+            border: Border.all(
+              color: AppTheme.transitionMetalColor.withValues(alpha: 0.5),
+            ),
+          ),
+          child: const Icon(
+            Icons.science,
+            color: AppTheme.transitionMetalColor,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm + 2),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Elementa',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              Text(
+                'Periodic Table of Elements',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 10.5,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchAppBarField() {
+    return TextField(
+      controller: _searchController,
+      autofocus: true,
+      onChanged: _onSearchChanged,
+      style: GoogleFonts.inter(
+        color: Colors.white,
+        fontSize: 14.5,
+      ),
+      decoration: InputDecoration(
+        hintText: 'Search symbol, name, or # (e.g. Au, Gold, 79)...',
+        hintStyle: GoogleFonts.inter(
+          color: Colors.white.withValues(alpha: 0.45),
+          fontSize: 13.0,
+        ),
+        border: InputBorder.none,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      ),
     );
   }
 
@@ -262,6 +371,9 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
 
     return Column(
       children: [
+        // Real-time search result chips bar (if search is active with results)
+        if (_isSearchActive && _searchQuery.isNotEmpty) _buildSearchResultsBar(),
+
         // Persistent, tappable category legend bar
         _buildCategoryLegendBar(),
 
@@ -278,6 +390,8 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
                 onCategorySelected: _onCategoryTapped,
                 transformationController: _transformationController,
                 highlightedCategory: _highlightedCategory,
+                matchingElementNumbers: _matchingElementNumbers,
+                focusedElementNumber: _focusedElementNumber,
               ),
 
               // Navigation hint pill at bottom
@@ -334,6 +448,78 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Horizontal bar showing matched elements for quick tapping
+  Widget _buildSearchResultsBar() {
+    if (_searchResults.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+        color: AppTheme.surfaceCard,
+        child: Text(
+          'No elements match "$_searchQuery"',
+          style: GoogleFonts.inter(
+            color: AppTheme.textMuted,
+            fontSize: 12.0,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 44,
+      color: AppTheme.surfaceCard,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+        scrollDirection: Axis.horizontal,
+        itemCount: _searchResults.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final e = _searchResults[index];
+          final isFocused = _focusedElementNumber == e.number;
+
+          return ActionChip(
+            onPressed: () {
+              _focusElement(e);
+            },
+            backgroundColor: isFocused
+                ? const Color(0xFF38BDF8).withValues(alpha: 0.25)
+                : e.categoryColor.withValues(alpha: 0.15),
+            side: BorderSide(
+              color: isFocused ? const Color(0xFF38BDF8) : e.categoryColor.withValues(alpha: 0.6),
+              width: isFocused ? 1.5 : 1.0,
+            ),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+            avatar: Container(
+              width: 16,
+              height: 16,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: e.categoryColor,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '${e.number}',
+                style: GoogleFonts.jetBrainsMono(
+                  color: Colors.black,
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            label: Text(
+              '${e.symbol} • ${e.name}',
+              style: GoogleFonts.inter(
+                color: isFocused ? Colors.white : Colors.white.withValues(alpha: 0.9),
+                fontSize: 11.5,
+                fontWeight: isFocused ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -398,8 +584,8 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: cat.color.withValues(alpha: 0.6),
-                            blurRadius: 4,
+                            color: cat.color.withValues(alpha: 0.5),
+                            blurRadius: 4.0,
                           ),
                         ],
                       ),
@@ -416,19 +602,15 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
                             isSelected ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
-                    if (count > 0) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        '($count)',
-                        style: GoogleFonts.jetBrainsMono(
-                          color: isSelected
-                              ? cat.color
-                              : Colors.white.withValues(alpha: 0.45),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '($count)',
+                      style: GoogleFonts.jetBrainsMono(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 10.0,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -439,17 +621,25 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
     );
   }
 
-  /// Banner displayed when a category filter / highlight is active
+  /// Active filter notification strip when a category is selected
   Widget _buildActiveFilterBanner() {
     final catInfo = AppTheme.getCategoryInfo(_highlightedCategory!);
     final count = _repository.getByCategory(_highlightedCategory!).length;
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs + 2,
+        vertical: AppSpacing.xs + 1,
       ),
-      color: catInfo.color.withValues(alpha: 0.16),
+      decoration: BoxDecoration(
+        color: catInfo.color.withValues(alpha: 0.15),
+        border: Border(
+          bottom: BorderSide(
+            color: catInfo.color.withValues(alpha: 0.35),
+          ),
+        ),
+      ),
       child: Row(
         children: [
           Container(
@@ -463,9 +653,11 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'Showing ${catInfo.displayName} ($count elements) • Tap legend or button to reset',
+              'Filtering: ${catInfo.displayName} ($count elements) • Other categories dimmed',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
-                color: Colors.white.withValues(alpha: 0.9),
+                color: Colors.white.withValues(alpha: 0.95),
                 fontSize: 11.5,
                 fontWeight: FontWeight.w500,
               ),
@@ -476,22 +668,22 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
+                horizontal: AppSpacing.xs + 2,
                 vertical: 2,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.close, size: 14, color: Colors.white70),
-                  const SizedBox(width: 2),
                   Text(
                     'Clear',
                     style: GoogleFonts.inter(
-                      color: Colors.white70,
+                      color: catInfo.color,
                       fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(width: 2),
+                  Icon(Icons.close, size: 13, color: catInfo.color),
                 ],
               ),
             ),
@@ -549,9 +741,11 @@ class _PeriodicTableScreenState extends State<PeriodicTableScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
+              '• Search & Filter: Search by element name, symbol, or atomic number. Matches are highlighted and focused on the table.\n'
+              '• Deeper Properties: Inspect electron configurations, melting/boiling points, density, electronegativity, and discovery history.\n'
+              '• Sequential Navigation: Step smoothly through elements sequentially with Previous/Next controls.\n'
               '• Interactive Legend: Tap any category chip in the top bar to inspect its scientific definition and highlight elements on the grid.\n'
-              '• Zoom & Pan: Drag to pan across groups 1–18; pinch or use the zoom buttons to inspect any element.\n'
-              '• Element Details: Tap any element tile to open its complete detail card with atomic weight, group, period, and summary.',
+              '• Zoom & Pan: Drag to pan across groups 1–18; pinch or use the zoom buttons to inspect any element.',
               style: GoogleFonts.inter(
                 color: Colors.white.withValues(alpha: 0.65),
                 fontSize: 12.5,

@@ -88,15 +88,46 @@ The dataset consists of all 118 chemical elements from Atomic Number 1 (Hydrogen
     - Added `test/theme_test.dart` verifying spacing constants, non-collision of 10 category colors, category metadata, and `darkTheme` configuration.
     - Expanded `test/widget_test.dart` verifying legend taps, CategoryDetailSheet display, grid highlighting, clear filter action, element detail bottom sheet display, close actions, and multi-device viewport tests (360x640 mobile and 800x1280 tablet).
     - All 19 tests pass cleanly (`flutter test` exit code 0, `flutter analyze` 0 issues).
+### Release 3–5 — Complete (Combined Milestone: Search & Filter, Deeper Scientific Data, Motion & Delight)
+- Completed:
+  - **Release 3 — Search & Filter**:
+    - Integrated real-time search in `lib/screens/periodic_table_screen.dart` via AppBar search toggle with auto-focusing text field.
+    - Added multi-criteria search in `lib/data/element_repository.dart` supporting exact & prefix matching on atomic numbers (e.g. 79), symbols (e.g. Au), and chemical names (e.g. Gold).
+    - Grid-wide search highlighting: non-matching elements automatically dim while matching elements retain vibrant coloring.
+    - Real-time horizontal search results bar with quick-tap result chips showing atomic number, symbol, and name.
+    - Viewport auto-focusing: selecting or focusing on any search result smoothly translates and centers the `InteractiveViewer` onto that element's periodic table coordinates.
+  - **Release 4 — Deeper Scientific Data & Sequential Navigation**:
+    - Enriched all 118 elements in `assets/data/elements.json` and `lib/models/element_data.dart` with deep chemical, physical, and historical metrics:
+      - Electron configuration (e.g. `[He] 2s² 2p⁴`)
+      - Phase / state of matter at room temperature (Solid, Liquid, Gas, Unknown)
+      - Melting point (°C / K) and boiling point (°C / K)
+      - Density (in g/cm³ or g/L)
+      - Electronegativity (Pauling scale)
+      - Discovery year and attribution (discoverer / institution)
+    - Enhanced `ElementDetailDialog` (`lib/widgets/element_detail_dialog.dart`) into a comprehensive scientific inspector:
+      - Integrated electron configuration badge banner with JetBrains Mono typography.
+      - State of matter indicator pill alongside category chip.
+      - Core atomic properties: Atomic Number, Atomic Mass (u), Period, Group / block.
+      - Physical & thermal properties: Melting Point, Boiling Point, Density, Electronegativity.
+      - Discovery & history card with attribution.
+      - Sequential navigation buttons (`<` and `>`) in the header enabling smooth browsing from element 1 to 118 with wrap-around without returning to the grid.
+  - **Release 5 — Motion & Delight**:
+    - Added `flutter_animate: ^4.5.2` dependency in `pubspec.yaml`.
+    - Integrated animated search pulse & shimmer glow on matching element tiles in `lib/widgets/element_box.dart`.
+    - Added tactile press animation (scale-down to 0.92 on tap) for element tiles.
+    - Added animated entrance effects (scale & ease-out curve) on the detail dialog element symbol badge.
+  - **Verification & Testing**:
+    - Expanded unit tests in `test/element_test.dart` verifying all 118 elements have valid electron configurations and states of matter, full search query test suite, and sequential navigation wrapping.
+    - Expanded widget tests in `test/widget_test.dart` verifying search bar activation, query entry, search chip display, deep property rendering, and next/prev navigation.
+    - All 23 tests pass cleanly (`flutter test` exit code 0, `flutter analyze` 0 issues).
+    - Version bumped to `3.0.0+3` in `pubspec.yaml`.
 - Deferred:
-  - Release 3: Search bar (symbol, name, atomic number), category filter chips, tap-to-focus on table.
-  - Release 4: Full-page element detail view with rich data tabs (physical states, melting/boiling points, electron configurations, electronegativity).
-  - Release 5: Fluid animations with `flutter_animate`, hero transitions, pulse effects.
-  - Release 6: Store-ready build, accessibility semantic labels, icon/splash, Play Store preparation.
+  - Release 6: Store-ready completion, app icon and native splash screen, accessibility screen reader audit, Play Store metadata.
 - Decisions:
-  - Detail View Modal: Native responsive bottom sheet on mobile (<=600px width) with drag handle and 24px top radius; centered modal card on tablet (>600px).
-  - Category Highlighting: Soft dimming (0.28 opacity) for non-matching elements rather than complete hiding, maintaining spatial periodic table layout continuity.
+  - Combined Releases 3, 4, and 5 into one unified delivery to provide search, deep chemical properties, and fluid animations concurrently.
+  - Responsive header layout: text elements in detail view headers are wrapped in `Expanded` with ellipsis to guarantee robust layout across all device aspect ratios and accessibility font scales.
 
 ## Known Issues / TODO
-- None. All automated tests pass (19/19), zero analyze warnings, clean build.
+- None. All automated tests pass (23/23), zero analyze warnings, clean build.
+
 

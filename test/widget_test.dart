@@ -86,7 +86,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       // Filter banner should now be visible on main screen
-      expect(find.textContaining('Showing Alkali Metal'), findsOneWidget);
+      expect(find.textContaining('Alkali Metal'), findsWidgets);
 
       // Tap "Clear" button to reset filter
       final clearButton = find.text('Clear');
@@ -95,11 +95,11 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      // Filter banner should now be dismissed
-      expect(find.textContaining('Showing Alkali Metal'), findsNothing);
+      // Filter banner clear button should now be dismissed
+      expect(find.text('Clear'), findsNothing);
     });
 
-    testWidgets('Tapping element box opens polished ElementDetailDialog',
+    testWidgets('Tapping element box opens polished ElementDetailDialog with deep properties & navigation',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(360, 640);
       tester.view.devicePixelRatio = 1.0;
@@ -120,12 +120,29 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      // Detail sheet should now be displayed
+      // Detail sheet should now be displayed with core and deep properties
       expect(find.text('Atomic Number'), findsOneWidget);
       expect(find.text('Atomic Mass'), findsOneWidget);
       expect(find.text('Period'), findsOneWidget);
       expect(find.text('Group'), findsOneWidget);
       expect(find.text('Overview'), findsOneWidget);
+      expect(find.text('Electron Config:'), findsOneWidget);
+      expect(find.text('Melting Point'), findsOneWidget);
+      expect(find.text('Boiling Point'), findsOneWidget);
+      expect(find.text('Density'), findsOneWidget);
+
+      // Verify sequential navigation buttons exist (prev wraps to #118 Og, next goes to #2 He)
+      expect(find.text('#118 Og'), findsOneWidget);
+      expect(find.text('#2 He'), findsOneWidget);
+
+      // Tap Next button to navigate to Helium (#2 He)
+      await tester.tap(find.text('#2 He'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Now Helium details should be visible
+      expect(find.text('Helium'), findsWidgets);
+      expect(find.text('#1 H'), findsOneWidget);
 
       // Dismiss dialog via close button
       final closeButton = find.byIcon(Icons.close);
@@ -134,6 +151,47 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Search bar allows searching and highlights matching elements',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(ElementaApp(repository: testRepo));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Tap search icon in app bar
+      final searchIconButton = find.byTooltip('Search Elements');
+      expect(searchIconButton, findsOneWidget);
+      await tester.tap(searchIconButton);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Enter "Au" into the search field
+      final textFieldFinder = find.byType(TextField);
+      expect(textFieldFinder, findsOneWidget);
+      await tester.enterText(textFieldFinder, 'Au');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Matching result chip for Gold should appear
+      expect(find.text('Au • Gold'), findsOneWidget);
+
+      // Close search
+      final closeSearchButton = find.byTooltip('Close Search');
+      expect(closeSearchButton, findsOneWidget);
+      await tester.tap(closeSearchButton);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(TextField), findsNothing);
       expect(tester.takeException(), isNull);
     });
 

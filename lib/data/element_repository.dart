@@ -57,6 +57,78 @@ class ElementRepository {
     return elements.where((e) => e.category == category).toList();
   }
 
+  /// Searches elements by symbol, name, or atomic number.
+  List<ElementData> search(String query) {
+    final cleanQuery = query.trim().toLowerCase();
+    if (cleanQuery.isEmpty) return [];
+
+    final asNumber = int.tryParse(cleanQuery);
+    final results = <ElementData>[];
+    final seen = <int>{};
+
+    void addMatch(ElementData e) {
+      if (seen.add(e.number)) {
+        results.add(e);
+      }
+    }
+
+    // 1. Exact atomic number match
+    if (asNumber != null) {
+      final numMatch = getByNumber(asNumber);
+      if (numMatch != null) addMatch(numMatch);
+    }
+
+    // 2. Exact symbol match
+    final exactSymbol = getBySymbol(cleanQuery);
+    if (exactSymbol != null) addMatch(exactSymbol);
+
+    // 3. Symbol starts with
+    for (final e in elements) {
+      if (e.symbol.toLowerCase().startsWith(cleanQuery)) {
+        addMatch(e);
+      }
+    }
+
+    // 4. Name starts with
+    for (final e in elements) {
+      if (e.name.toLowerCase().startsWith(cleanQuery)) {
+        addMatch(e);
+      }
+    }
+
+    // 5. Name contains
+    for (final e in elements) {
+      if (e.name.toLowerCase().contains(cleanQuery)) {
+        addMatch(e);
+      }
+    }
+
+    // 6. Atomic number starts with (e.g. searching "1" matches 1, 10-19, 100-118)
+    if (asNumber != null) {
+      for (final e in elements) {
+        if (e.number.toString().startsWith(cleanQuery)) {
+          addMatch(e);
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /// Returns the predecessor element by atomic number (wraps around to 118 if at 1).
+  ElementData? getPrevious(int currentNumber) {
+    if (elements.isEmpty) return null;
+    final target = currentNumber <= 1 ? 118 : currentNumber - 1;
+    return getByNumber(target);
+  }
+
+  /// Returns the successor element by atomic number (wraps around to 1 if at 118).
+  ElementData? getNext(int currentNumber) {
+    if (elements.isEmpty) return null;
+    final target = currentNumber >= 118 ? 1 : currentNumber + 1;
+    return getByNumber(target);
+  }
+
   /// Returns all unique category identifiers present in the dataset.
   List<String> getUniqueCategories() {
     final categories = <String>{};
